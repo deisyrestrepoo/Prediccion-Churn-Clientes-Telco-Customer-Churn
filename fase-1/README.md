@@ -41,11 +41,11 @@ Resultados en el conjunto de prueba:
 
 | Métrica   | Modelo base (Dummy) | Regresión Logística |
 |-----------|---------------------|---------------------|
-| Accuracy  | [0.7342]            | [0.7257]            |
-| Precision | [0.0000]            | [0.4901]            |
-| Recall    | [0.0000]            | [0.7941]            |
-| F1-score  | [0.0000]            | [0.6061]            |
-| ROC-AUC   | [0.5000]            | [0.8353]            |
+| Accuracy  | 0.7342              | 0.7257              |
+| Precision | 0.0000              | 0.4901              |
+| Recall    | 0.0000              | 0.7941              |
+| F1-score  | 0.0000              | 0.6061              |
+| ROC-AUC   | 0.5000              | 0.8353              |
 
 El modelo supera ampliamente al modelo base en Recall, F1 y ROC-AUC. Las variables más
 influyentes fueron [tenure, tipo de contrato, servicio de fibra óptica]. Se evitó la
