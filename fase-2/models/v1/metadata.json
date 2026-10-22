@@ -1,0 +1,86 @@
+{
+  "version": "v1",
+  "fecha_creacion": "2026-10-22T18:50:04+00:00",
+  "tipo_problema": "clasificacion_binaria",
+  "variable_objetivo": "Churn",
+  "significado_etiquetas": {
+    "0": "No churn",
+    "1": "Churn"
+  },
+  "algoritmo": "LogisticRegression (Pipeline: imputacion + StandardScaler + OneHotEncoder)",
+  "parametros_modelo": {
+    "C": 1.0,
+    "class_weight": "balanced",
+    "max_iter": 1000,
+    "random_state": 42,
+    "solver": "lbfgs"
+  },
+  "semilla": 42,
+  "variables_entrada": [
+    "tenure",
+    "MonthlyCharges",
+    "TotalCharges",
+    "SeniorCitizen",
+    "gender",
+    "Partner",
+    "Dependents",
+    "PhoneService",
+    "MultipleLines",
+    "InternetService",
+    "OnlineSecurity",
+    "OnlineBackup",
+    "DeviceProtection",
+    "TechSupport",
+    "StreamingTV",
+    "StreamingMovies",
+    "Contract",
+    "PaperlessBilling",
+    "PaymentMethod"
+  ],
+  "tipos_esperados": {
+    "tenure": "numerico",
+    "MonthlyCharges": "numerico",
+    "TotalCharges": "numerico",
+    "SeniorCitizen": "binario_numerico (0/1)",
+    "gender": "categorico (texto)",
+    "Partner": "categorico (texto)",
+    "Dependents": "categorico (texto)",
+    "PhoneService": "categorico (texto)",
+    "MultipleLines": "categorico (texto)",
+    "InternetService": "categorico (texto)",
+    "OnlineSecurity": "categorico (texto)",
+    "OnlineBackup": "categorico (texto)",
+    "DeviceProtection": "categorico (texto)",
+    "TechSupport": "categorico (texto)",
+    "StreamingTV": "categorico (texto)",
+    "StreamingMovies": "categorico (texto)",
+    "Contract": "categorico (texto)",
+    "PaperlessBilling": "categorico (texto)",
+    "PaymentMethod": "categorico (texto)"
+  },
+  "datos": {
+    "fuente": "Kaggle: blastchar/telco-customer-churn (WA_Fn-UseC_-Telco-Customer-Churn.csv)",
+    "archivo": "WA_Fn-UseC_-Telco-Customer-Churn.csv",
+    "sha256": "88be4b93fbe0cc83421af1c503794c97c342eca914c1576db7c276e61d61358a",
+    "observaciones": 7043
+  },
+  "particion": {
+    "estrategia": "train_test_split estratificado por la variable objetivo",
+    "test_size": 0.2,
+    "seed": 42,
+    "filas_entrenamiento": 5634,
+    "filas_prueba": 1409,
+    "proporcion_churn_entrenamiento": 0.2653532126375577,
+    "proporcion_churn_prueba": 0.2654364797728886
+  },
+  "metrica_principal": "roc_auc",
+  "entorno": {
+    "python": "3.11.3",
+    "scikit_learn": "1.9.0",
+    "dependencias": "requirements.txt"
+  },
+  "codigo": {
+    "commit": "9b0f7f5366379b197df6046ad57e4ca25a0f46f9",
+    "cambios_sin_commit": false
+  }
+}
