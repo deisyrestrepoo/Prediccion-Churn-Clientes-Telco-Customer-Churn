@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Datos completos (se descargan de Kaggle, ver README)
+fase-2/data/*
+!fase-2/data/ejemplo_prediccion.csv
+
+# Resultados generados
+fase-2/outputs/
