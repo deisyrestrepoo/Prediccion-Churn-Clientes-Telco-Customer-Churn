@@ -1,0 +1,61 @@
+{
+  "metrica_principal": "roc_auc",
+  "conjunto_evaluacion": "prueba (no usado para ajustar nada)",
+  "modelo": {
+    "accuracy": 0.7381121362668559,
+    "precision": 0.504302925989673,
+    "recall": 0.7834224598930482,
+    "f1": 0.6136125654450262,
+    "roc_auc": 0.8415820610194011,
+    "matriz_confusion": [
+      [
+        747,
+        288
+      ],
+      [
+        81,
+        293
+      ]
+    ]
+  },
+  "modelo_base": {
+    "accuracy": 0.7345635202271115,
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1": 0.0,
+    "roc_auc": 0.5,
+    "matriz_confusion": [
+      [
+        1035,
+        0
+      ],
+      [
+        374,
+        0
+      ]
+    ]
+  },
+  "validacion_cruzada_entrenamiento": {
+    "folds": 5,
+    "roc_auc": {
+      "media": 0.8459058374937392,
+      "desviacion": 0.012407564561976642
+    },
+    "recall": {
+      "media": 0.8013377926421403,
+      "desviacion": 0.037932968237479145
+    },
+    "precision": {
+      "media": 0.5166718057951663,
+      "desviacion": 0.018535143723034594
+    },
+    "f1": {
+      "media": 0.628079125689988,
+      "desviacion": 0.02312233076631777
+    },
+    "accuracy": {
+      "media": 0.7483152902832305,
+      "desviacion": 0.01504025753930414
+    }
+  }
+}
