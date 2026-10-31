@@ -1,6 +1,6 @@
 {
   "version": "v2",
-  "fecha_creacion": "2026-10-22T18:50:07+00:00",
+  "fecha_creacion": "2026-10-31T20:37:52+00:00",
   "tipo_problema": "clasificacion_binaria",
   "variable_objetivo": "Churn",
   "significado_etiquetas": {
@@ -75,12 +75,12 @@
   },
   "metrica_principal": "roc_auc",
   "entorno": {
-    "python": "3.11.3",
-    "scikit_learn": "1.9.0",
+    "python": "3.12.5",
+    "scikit_learn": "1.6.1",
     "dependencias": "requirements.txt"
   },
   "codigo": {
-    "commit": "9b0f7f5366379b197df6046ad57e4ca25a0f46f9",
-    "cambios_sin_commit": true
+    "commit": "6b8c895f05bfaf3e79ba8ddf64b9d7e1ad3c3999",
+    "cambios_sin_commit": false
   }
 }
