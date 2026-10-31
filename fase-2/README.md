@@ -16,7 +16,8 @@ En la Fase 1 todo el trabajo vivía en `fase-1/notebook.ipynb`. La Fase 2 convie
 | PR / rama | Contenido | Estado |
 |---|---|---|
 | (estructura inicial) | Carpetas y archivos vacíos de `fase-2/`, `.gitignore`, `requirements.txt` | Integrado en `develop` |
-| `feature/train-script` | Lógica compartida en `src/` + `train.py` + este README | **Este PR** |
+| `feature/train-script` | Lógica compartida en `src/` + `train.py` + este README | Integrado en `develop` (PR #13) |
+| `feature/reproducibilidad-versiones` | Regeneración de `v1` y `v2` con el entorno de `requirements.txt` | **Este PR** |
 | `feature/predict-script` | `predict.py` + CSV de ejemplo | Pendiente |
 | `feature/docker-tests` | `Dockerfile`, `.dockerignore` y pruebas con pytest | Pendiente |
 
@@ -58,7 +59,7 @@ La especificación exige documentar los cambios que afecten el preprocesamiento,
 
 ## 4. Entorno
 
-- **Python:** 3.12 (verificar con `python --version`; debe ser el mismo en local y en Docker).
+- **Python:** 3.12 (probado con 3.12.5; verificar con `python --version`; debe ser el mismo en local y en Docker). No usar Python 3.14: scikit-learn 1.6.1 no tiene paquetes para esa versión. Las versiones de las librerías están fijadas en `requirements.txt`.
 - Terminal usada: **PowerShell** (Windows). En Bash cambia solo la activación del entorno virtual.
 
 Desde la raíz del repositorio:
@@ -179,6 +180,8 @@ Métrica principal: **ROC-AUC** sobre el conjunto de prueba (1.409 clientes). Se
 | `v1` | 42 | 0.8416 | 0.7834 | 0.5043 | 0.6136 | 0.7381 | 0.8459 ± 0.0124 |
 | `v2` | 7 | 0.8567 | 0.8235 | 0.5394 | 0.6519 | 0.7665 | 0.8414 ± 0.0041 |
 | Modelo base (ambas) | — | 0.5000 | 0.0000 | 0.0000 | 0.0000 | 0.7346 | — |
+
+> **Reproducibilidad del entorno.** `v1` y `v2` se regeneraron con Python 3.12.5 y scikit-learn 1.6.1 (las versiones de `requirements.txt`), y `metadata.json` registra ese entorno. Los resultados de esta tabla no cambiaron respecto a la primera ejecución. Las versiones se pueden cargar y usar con `predict` y `predict_proba` en ese entorno.
 
 **Comparación con el modelo base.** El modelo base obtiene una accuracy de 0.7346 solo por predecir siempre "no se va", pero no detecta ningún cliente que abandona (recall 0). La Regresión Logística detecta entre el 78 % y el 82 % de los clientes que se van. Por eso la accuracy no es una buena métrica aquí y se usa ROC-AUC y recall.
 
