@@ -205,7 +205,7 @@ def test_valores_faltantes_se_imputan_y_no_se_pierden_filas(datos_csv, tmp_path)
     entrada.to_csv(entrada_csv, index=False)
     salida = tmp_path / "predicciones.csv"
 
-    # Un valor nulo no es una columna ausente: no hay error y no se descarta ninguna fila.
+    # Un valor nulo NO es una columna ausente: no hay error y no se descarta ninguna fila.
     assert predict.main(["--model", str(modelos / "v1"), "--input", str(entrada_csv),
                          "--output", str(salida)]) == 0
     resultado = pd.read_csv(salida)
@@ -229,19 +229,19 @@ def test_entrada_invalida_da_error_claro_y_codigo_distinto_de_cero(datos_csv, tm
     assert _entrenar(datos_csv, modelos, "v1") == 0
     capsys.readouterr()
 
-    #a)- -nivel de función: columna ausente => error claro que nombra la columna.
+	# (a) A nivel de función: columna ausente => error claro que nombra la columna.
     sin_columna = pd.read_csv(datos_csv).drop(columns=["Churn", "tenure"]).head(5)
     with pytest.raises(DatosInvalidosError, match="Faltan columnas requeridas: tenure"):
         preparar_features(sin_columna)
 
-    #b-Texto en una columna numérica => error claro.
+	# (b) Texto en una columna numérica => error claro.
     texto = pd.read_csv(datos_csv).drop(columns=["Churn"]).head(5).copy()
     texto["MonthlyCharges"] = texto["MonthlyCharges"].astype(object)
     texto.loc[2, "MonthlyCharges"] = "abc"
     with pytest.raises(DatosInvalidosError, match="MonthlyCharges"):
         preparar_features(texto)
 
-    #c-A nivel de línea de comandos (proceso real): código distinto de cero,
+    # (c) A nivel de línea de comandos (proceso real): código distinto de cero,
     # mensaje comprensible y SIN archivo de salida.
     entrada_mala = tmp_path / "sin_tenure.csv"
     sin_columna.to_csv(entrada_mala, index=False)
@@ -256,7 +256,7 @@ def test_entrada_invalida_da_error_claro_y_codigo_distinto_de_cero(datos_csv, tm
     assert "Error:" in proceso.stderr and "tenure" in proceso.stderr
     assert not salida.exists()
 
-    #d- Otros errores previsibles de predict.py y train.py (por función main).
+	# (d) Otros errores previsibles de predict.py y train.py (por función main).
     assert predict.main(["--version", "v99", "--models-dir", str(modelos),
                          "--input", str(entrada_mala), "--output", str(salida)]) == 1
     assert predict.main(["--input", str(entrada_mala), "--output", str(salida)]) == 1
