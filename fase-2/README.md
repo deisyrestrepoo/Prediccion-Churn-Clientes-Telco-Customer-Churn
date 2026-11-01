@@ -5,6 +5,8 @@
 **Integrantes:** Deisy Tatiana Restrepo Ospina, Edgar Andrés Garzón Marín
 **Entrega 2:** 31 de octubre de 2026
 
+
+
 ## 1. Problema y relación con la Fase 1
 
 El problema no cambia: **predecir si un cliente de una empresa de telecomunicaciones abandonará el servicio (churn)** a partir de su contrato, servicios contratados y cargos. Es una clasificación binaria sobre el dataset *Telco Customer Churn* (7.043 clientes, 21 columnas).
@@ -17,8 +19,8 @@ En la Fase 1 todo el trabajo vivía en `fase-1/notebook.ipynb`. La Fase 2 convie
 |---|---|---|
 | (estructura inicial) | Carpetas y archivos vacíos de `fase-2/`, `.gitignore`, `requirements.txt` | Integrado en `develop` |
 | `feature/train-script` | Lógica compartida en `src/` + `train.py` + este README | Integrado en `develop` (PR #13) |
-| `feature/reproducibilidad-versiones` | Regeneración de `v1` y `v2` con el entorno de `requirements.txt` | **Este PR** |
-| `feature/predict-script` | `predict.py` + CSV de ejemplo | Pendiente |
+| `feature/reproducibilidad-versiones` | Regeneración de `v1` y `v2` con el entorno de `requirements.txt` | Integrado a develop |
+| `feature/predict-script` | `predict.py` + CSV de ejemplo | **Este PR** |
 | `feature/docker-tests` | `Dockerfile`, `.dockerignore` y pruebas con pytest | Pendiente |
 
 Las secciones de predicción, Docker y pruebas de este README se completan en sus PR correspondientes (ver sección 10).
@@ -143,6 +145,74 @@ models/
 ### Manejo de errores
 
 Los errores previsibles (archivo inexistente, columna faltante, objetivo con valores inválidos, texto en una columna numérica, versión repetida o con caracteres no válidos) imprimen `Error: <mensaje>` y terminan con código de salida distinto de cero, sin dejar una versión a medias.
+
+## Predicción: `predict.py`
+
+`predict.py` carga una versión guardada del modelo y predice sobre un CSV nuevo. **No reentrena ni reajusta nada**: usa el Pipeline guardado (imputación, escalamiento y codificación aprendidos en el entrenamiento).
+
+Comando (desde `fase-2/`, en una sola línea):
+
+```powershell
+python predict.py --version v1 --input data/ejemplo_prediccion.csv --output outputs/predicciones.csv --probabilidades
+```
+
+Equivalente indicando la ruta del modelo: `python predict.py --model models/v1/modelo.joblib --input data/ejemplo_prediccion.csv --output outputs/predicciones.csv`. Consultar la ayuda: `python predict.py --help`.
+
+| Argumento | Obligatorio | Descripción |
+|---|---|---|
+| `--version` o `--model` | Uno de los dos | `--version v1` busca `models/v1` (carpeta cambiable con `--models-dir`); `--model` acepta `modelo.joblib` o la carpeta de la versión |
+| `--input` | Sí | CSV con los clientes a predecir (sin la variable objetivo) |
+| `--output` | Sí | CSV de salida con las predicciones |
+| `--probabilidades` | No | Agrega la columna `probabilidad_churn` |
+
+### CSV de entrada
+
+Debe tener las 19 columnas predictoras del dataset (en cualquier orden): `gender`, `SeniorCitizen`, `Partner`, `Dependents`, `tenure`, `PhoneService`, `MultipleLines`, `InternetService`, `OnlineSecurity`, `OnlineBackup`, `DeviceProtection`, `TechSupport`, `StreamingTV`, `StreamingMovies`, `Contract`, `PaperlessBilling`, `PaymentMethod`, `MonthlyCharges` y `TotalCharges`. Numéricas: `tenure`, `MonthlyCharges`, `TotalCharges` y `SeniorCitizen` (0/1); el resto son texto. Se incluye un ejemplo de 8 clientes inventados en `data/ejemplo_prediccion.csv`.
+
+- **Columnas adicionales** (`customerID`, `Churn`, etc.): se ignoran para predecir. Si viene `customerID`, se conserva en la salida.
+- **Valores nulos:** una celda vacía no es un error. Los numéricos se imputan con la **mediana del entrenamiento** y los categóricos con la categoría más frecuente del entrenamiento. Una **columna ausente** sí es un error.
+- **Categorías no vistas** en el entrenamiento: se informa con un `Aviso` y la fila se predice igual (todas las columnas codificadas de esa variable quedan en 0).
+- **Texto en una columna numérica:** error; el archivo no se procesa.
+
+### Salida
+
+Una fila por cada cliente de entrada, **en el mismo orden**; nunca se descarta una fila en silencio.
+
+| Columna | Significado |
+|---|---|
+| `customerID` | Identificador (solo si venía en la entrada) |
+| `prediccion` | `1` = el cliente probablemente abandonará (Churn); `0` = se quedará (No churn) |
+| `prediccion_etiqueta` | `Churn` o `No churn` |
+| `probabilidad_churn` | Probabilidad de la clase 1 (solo con `--probabilidades`); el umbral de decisión es 0.5 |
+
+### Errores previsibles
+
+Se imprime `Error: <mensaje>` por la salida de error, el código de salida es `1` y **no se genera el archivo de salida**.
+
+| Situación | Mensaje |
+|---|---|
+| Falta una columna | `Faltan columnas requeridas: tenure` |
+| Texto en columna numérica | `La columna 'MonthlyCharges' debe ser numérica, pero tiene valores no numéricos` |
+| CSV inexistente o vacío | `No se encontró el archivo CSV: ...` |
+| Versión o modelo inexistente | `No se encontró el modelo: ...` |
+| Ni `--model` ni `--version` (o ambos) | `Indique exactamente una opción: --model o --version.` |
+
+Salida real con la versión `v1`:
+
+```
+Modelo versión v1: 8 predicciones (4 con churn, 4 sin churn).
+Archivo generado: outputs\predicciones.csv
+
+customerID,prediccion,prediccion_etiqueta,probabilidad_churn
+EJ-0001,1,Churn,0.8057
+EJ-0002,0,No churn,0.1176
+EJ-0003,1,Churn,0.8758
+EJ-0004,0,No churn,0.0644
+EJ-0005,1,Churn,0.9087
+EJ-0006,0,No churn,0.0078
+EJ-0007,0,No churn,0.1451
+EJ-0008,1,Churn,0.7939
+```
 
 ## 7. Evidencia de ejecución
 
