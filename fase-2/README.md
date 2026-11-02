@@ -11,7 +11,7 @@
 
 El problema no cambia: **predecir si un cliente de una empresa de telecomunicaciones abandonará el servicio (churn)** a partir de su contrato, servicios contratados y cargos. Es una clasificación binaria sobre el dataset *Telco Customer Churn* (7.043 clientes, 21 columnas).
 
-En la Fase 1 todo el trabajo vivía en `fase-1/notebook.ipynb`. La Fase 2 convierte ese notebook en una **aplicación reutilizable**: el modelo se entrena con un comando, queda guardado en una versión identificable y puede reutilizarse sin abrir el notebook. Se conservan el problema, los datos y el enfoque de modelado (Regresión Logística frente a un modelo base); `fase-1/` no se modificó.
+; `fase-1/` no se modificó, salvo la corrección de formato de su `requirements.txt` (ver sección 3).
 
 ### Estado de la fase (por Pull Requests)
 
@@ -22,7 +22,8 @@ En la Fase 1 todo el trabajo vivía en `fase-1/notebook.ipynb`. La Fase 2 convie
 | `feature/reproducibilidad-versiones` | Regeneración de `v1` y `v2` con el entorno de `requirements.txt` | Integrado en `develop` (PR #14) |
 | `feature/predict-script` | `predict.py` + CSV de ejemplo | Integrado en `develop` (PR #15) |
 | `feature/pruebas-pytest` | Las 5 pruebas mínimas con pytest | Integrado en `develop` (PR #16) |
-| `feature/docker` | `Dockerfile`, `.dockerignore` y evidencia de `build`/`run` | **Este PR** |
+| `feature/docker` | `Dockerfile`, `.dockerignore` y evidencia de `build`/`run` | Integrado en `develop` (PR #17) |
+| `feature/correcciones-fase1` | Formato de `fase-1/requirements.txt` y README raíz | **Este PR** |
 
 Las secciones de predicción, Docker y pruebas de este README se completan en sus PR correspondientes (ver sección 10).
 
@@ -59,6 +60,15 @@ La especificación exige documentar los cambios que afecten el preprocesamiento,
 | Preprocesamiento guardado | Solo `modelo.joblib` del estimador | Se guarda el **Pipeline completo** (imputación + escalamiento + codificación + modelo) | Una predicción futura aplica exactamente las reglas aprendidas |
 | Validación | Partición entrenamiento/prueba | Misma partición **más** validación cruzada estratificada de 5 folds sobre el entrenamiento (el Pipeline se reajusta en cada fold) | Estimar la variabilidad de la métrica sin usar el conjunto de prueba |
 | Versionamiento | Un único `modelo.joblib` | Carpetas `models/<version>/` con modelo, métricas y metadatos; una versión existente nunca se sobrescribe | Requisito de la especificación (sección 10) |
+
+### Retroalimentación de la Fase 1
+
+Al momento de esta entrega el equipo **no había recibido retroalimentación formal** de la Fase 1. Por eso se corrigieron los pendientes que el propio equipo detectó al revisar el repositorio:
+
+| Pendiente detectado | Corrección |
+|---|---|
+| `fase-1/requirements.txt` con formato inválido (`Python: 3.13.15`, `scikit-learn: 1.6.1`), que `pip` no podía leer | Reescrito como `paquete==versión`, conservando las versiones ya registradas; las de numpy, matplotlib y seaborn no se habían registrado y no se inventaron |
+| Tabla del `README.md` raíz rota y sin la carpeta `fase-2/` | Tabla corregida y carpeta agregada |
 
 ## 4. Entorno
 
