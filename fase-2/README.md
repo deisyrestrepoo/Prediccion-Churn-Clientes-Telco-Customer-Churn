@@ -21,8 +21,8 @@ En la Fase 1 todo el trabajo vivía en `fase-1/notebook.ipynb`. La Fase 2 convie
 | `feature/train-script` | Lógica compartida en `src/` + `train.py` + este README | Integrado en `develop` (PR #13) |
 | `feature/reproducibilidad-versiones` | Regeneración de `v1` y `v2` con el entorno de `requirements.txt` | Integrado en `develop` (PR #14) |
 | `feature/predict-script` | `predict.py` + CSV de ejemplo | Integrado en `develop` (PR #15) |
-| `feature/pruebas-pytest` | Las 5 pruebas mínimas con pytest | **Este PR** |
-| `feature/docker` | `Dockerfile`, `.dockerignore` y evidencia de `build`/`run` | Pendiente |
+| `feature/pruebas-pytest` | Las 5 pruebas mínimas con pytest | Integrado en `develop` (PR #16) |
+| `feature/docker` | `Dockerfile`, `.dockerignore` y evidencia de `build`/`run` | **Este PR** |
 
 Las secciones de predicción, Docker y pruebas de este README se completan en sus PR correspondientes (ver sección 10).
 
@@ -241,6 +241,50 @@ tests/test_aplicacion.py ..... [100%]
 
 Los `DeprecationWarning` de scipy que pueden aparecer con estas versiones no afectan los resultados. La imagen de Docker **no** se prueba con pytest: se verifica manualmente (ver la sección de Docker).
 
+## Docker
+
+La imagen ejecuta `train.py`, `predict.py` y pytest. Contiene solo el código (`src/`, `tests/`, `train.py`, `predict.py`) y las dependencias fijadas de `requirements.txt` sobre `python:3.12.5-slim`. **No** contiene datos, modelos ni credenciales (ver `.dockerignore`), y **no entrena durante el build**: el entrenamiento ocurre al ejecutar el contenedor. Los datos y los modelos se montan con `-v`, así que lo que el contenedor guarda queda en la carpeta local.
+
+Los comandos se ejecutan en PowerShell desde `fase-2/`.
+
+**Construir la imagen**
+
+```powershell
+docker build -t modelos-fase2:1.0 .
+```
+
+**Entrenar** (datos en solo lectura; la versión nueva queda en `models/`):
+
+```powershell
+docker run --rm -v "${PWD}/data:/app/data:ro" -v "${PWD}/models:/app/models" modelos-fase2:1.0 python train.py --data data/WA_Fn-UseC_-Telco-Customer-Churn.csv --target Churn --output-dir models --version v-docker --seed 42
+```
+
+**Predecir** (modelos en solo lectura; resultados en `outputs/`):
+
+```powershell
+mkdir outputs -Force
+docker run --rm -v "${PWD}/data:/app/data:ro" -v "${PWD}/models:/app/models:ro" -v "${PWD}/outputs:/app/outputs" modelos-fase2:1.0 python predict.py --version v1 --input data/ejemplo_prediccion.csv --output outputs/predicciones_docker.csv --probabilidades
+```
+
+**Pruebas**
+
+```powershell
+docker run --rm modelos-fase2:1.0 python -m pytest -q
+```
+
+### Evidencia (ejecutada en Windows con Docker Desktop, 2 nov 2026)
+
+| Verificación | Resultado |
+|---|---|
+| `docker build -t modelos-fase2:1.0 .` | Imagen creada, 679 MB |
+| `docker run --rm modelos-fase2:1.0` | Muestra la ayuda de `train.py` |
+| `... python predict.py --help` | Muestra la ayuda de `predict.py` |
+| Entrenar dentro del contenedor | Crea `models/v-docker/` en la carpeta local; su `metadata.json` registra Python 3.12.5, scikit-learn 1.6.1 y `commit: "no disponible (sin Git, p. ej. dentro de Docker)"` |
+| Predecir con `v1` | `Modelo versión v1: 8 predicciones (4 con churn, 4 sin churn).` y se genera `outputs/predicciones_docker.csv`, con las mismas probabilidades que fuera de Docker (p. ej. `EJ-0001` 0.8057, `EJ-0006` 0.0078) |
+| Modelo inexistente (`--version v99`) | `Error: No se encontró el modelo: models/v99`, código de salida `1` y sin archivo de salida |
+| `python -m pytest -q` en el contenedor | `5 passed` |
+
+Dentro del contenedor no hay Git, por eso el commit queda como "no disponible" en los metadatos; el resto de la trazabilidad (versiones de Python y scikit-learn, huella SHA256 de los datos) se conserva. El contenedor se ejecuta con `--rm`, de modo que no queda ningún contenedor de esta imagen y todo lo que persiste está en `models/` y `outputs/`.
 
 ## 7. Evidencia de ejecución
 
