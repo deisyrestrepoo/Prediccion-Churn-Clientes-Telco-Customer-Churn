@@ -19,9 +19,10 @@ En la Fase 1 todo el trabajo vivía en `fase-1/notebook.ipynb`. La Fase 2 convie
 |---|---|---|
 | (estructura inicial) | Carpetas y archivos vacíos de `fase-2/`, `.gitignore`, `requirements.txt` | Integrado en `develop` |
 | `feature/train-script` | Lógica compartida en `src/` + `train.py` + este README | Integrado en `develop` (PR #13) |
-| `feature/reproducibilidad-versiones` | Regeneración de `v1` y `v2` con el entorno de `requirements.txt` | Integrado a develop |
-| `feature/predict-script` | `predict.py` + CSV de ejemplo | **Este PR** |
-| `feature/docker-tests` | `Dockerfile`, `.dockerignore` y pruebas con pytest | Pendiente |
+| `feature/reproducibilidad-versiones` | Regeneración de `v1` y `v2` con el entorno de `requirements.txt` | Integrado en `develop` (PR #14) |
+| `feature/predict-script` | `predict.py` + CSV de ejemplo | Integrado en `develop` (PR #15) |
+| `feature/pruebas-pytest` | Las 5 pruebas mínimas con pytest | **Este PR** |
+| `feature/docker` | `Dockerfile`, `.dockerignore` y evidencia de `build`/`run` | Pendiente |
 
 Las secciones de predicción, Docker y pruebas de este README se completan en sus PR correspondientes (ver sección 10).
 
@@ -213,6 +214,33 @@ EJ-0006,0,No churn,0.0078
 EJ-0007,0,No churn,0.1451
 EJ-0008,1,Churn,0.7939
 ```
+
+## Pruebas: pytest
+
+Las pruebas están en `tests/test_aplicacion.py` y usan **datos sintéticos** de 300 clientes con el esquema real: no necesitan el CSV de Kaggle ni la red, y escriben solo en carpetas temporales. Se ejecutan desde `fase-2/`:
+
+```powershell
+python -m pytest
+```
+
+| Prueba | Qué verifica |
+|---|---|
+| `test_entrenamiento_guarda_modelo_metricas_y_metadatos` | Entrenar y guardar: existen `modelo.joblib`, `metrics.json` y `metadata.json`; el artefacto se carga; hay métricas del modelo y del modelo base; los metadatos mínimos están completos |
+| `test_prediccion_una_por_fila_y_coincide_con_el_modelo_guardado` | Cargar y predecir: una predicción por fila, en el mismo orden, igual a la del Pipeline cargado y a la del modelo en memoria antes de guardarlo |
+| `test_valores_faltantes_se_imputan_y_no_se_pierden_filas` | Valores faltantes: se imputan con lo aprendido en el entrenamiento, no hay error y no se pierde ninguna fila |
+| `test_entrada_invalida_da_error_claro_y_codigo_distinto_de_cero` | Entrada inválida: columna ausente o texto en una columna numérica dan un error claro; la línea de comandos termina con código distinto de cero y sin archivo de salida |
+| `test_versionamiento_conserva_la_primera_y_rechaza_ids_repetidos` | Versionamiento: la segunda versión conserva la primera (misma huella SHA256) y repetir un identificador no sobrescribe |
+
+Resultado (Python 3.12.5, pytest 9.1.1):
+
+```
+collected 5 items
+tests/test_aplicacion.py ..... [100%]
+5 passed
+```
+
+Los `DeprecationWarning` de scipy que pueden aparecer con estas versiones no afectan los resultados. La imagen de Docker **no** se prueba con pytest: se verifica manualmente (ver la sección de Docker).
+
 
 ## 7. Evidencia de ejecución
 
