@@ -68,7 +68,7 @@ La especificación exige documentar los cambios que afecten el preprocesamiento,
 
 ### Retroalimentación de la Fase 1
 
-Al momento de esta entrega el equipo **no había recibido retroalimentación formal** de la Fase 1. Por eso, además de las correcciones técnicas de la tabla anterior (fuga de información y filas eliminadas, que el equipo identificó al revisar su propio notebook), se corrigieron dos pendientes detectados al revisar el repositorio:
+Además de las correcciones técnicas de la tabla anterior (fuga de información y filas eliminadas, que se identificó al revisar su propio notebook), se corrigieron dos pendientes detectados al revisar el repositorio:
 
 | Pendiente detectado | Corrección |
 |---|---|
