@@ -75,7 +75,7 @@ Además de las correcciones técnicas de la tabla anterior (fuga de información
 | `fase-1/requirements.txt` con formato inválido (`Python: 3.13.15`, `scikit-learn: 1.6.1`), que `pip` no podía leer | Reescrito como `paquete==versión`, conservando las versiones ya registradas; las de numpy, matplotlib y seaborn no se habían registrado y no se inventaron (el archivo de la Fase 1 queda parcial) |
 | Tabla del `README.md` raíz rota y sin la carpeta `fase-2/` | Tabla corregida y carpeta agregada |
 
-`fase-1/` solo cambió en ese archivo de dependencias; el notebook, el modelo y el código de la Fase 1 no se modificaron. Cuando se reciba la retroalimentación del docente, los comentarios adicionales se incorporarán y se documentarán en esta sección.
+`fase-1/` solo cambió en ese archivo de dependencias; el notebook, el modelo y el código de la Fase 1 no se modificaron. 
 
 ## 4. Entorno
 
