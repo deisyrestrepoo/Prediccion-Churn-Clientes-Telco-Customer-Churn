@@ -5,48 +5,53 @@
 **Integrantes:** Deisy Tatiana Restrepo Ospina, Edgar Andrés Garzón Marín
 **Entrega 2:** 31 de octubre de 2026
 
-
-
 ## 1. Problema y relación con la Fase 1
 
 El problema no cambia: **predecir si un cliente de una empresa de telecomunicaciones abandonará el servicio (churn)** a partir de su contrato, servicios contratados y cargos. Es una clasificación binaria sobre el dataset *Telco Customer Churn* (7.043 clientes, 21 columnas).
 
-; `fase-1/` no se modificó, salvo la corrección de formato de su `requirements.txt` (ver sección 3).
+En la Fase 1 todo el trabajo vivía en `fase-1/notebook.ipynb`. La Fase 2 convierte ese notebook en una **aplicación reutilizable**: el modelo se entrena con un comando, queda guardado en una versión identificable, puede reutilizarse para predecir sin abrir el notebook y se ejecuta también dentro de un contenedor Docker. Se conservan el problema, los datos y el enfoque de modelado (Regresión Logística frente a un modelo base); `fase-1/` solo cambió en el formato de su `requirements.txt` (ver sección 3); el notebook, el modelo y el código de la Fase 1 no se tocaron.
 
 ### Estado de la fase (por Pull Requests)
 
 | PR / rama | Contenido | Estado |
 |---|---|---|
 | (estructura inicial) | Carpetas y archivos vacíos de `fase-2/`, `.gitignore`, `requirements.txt` | Integrado en `develop` |
-| `feature/train-script` | Lógica compartida en `src/` + `train.py` + este README | Integrado en `develop` (PR #13) |
+| `feature/train-script` | Lógica compartida en `src/` + `train.py` + README | Integrado en `develop` (PR #13) |
 | `feature/reproducibilidad-versiones` | Regeneración de `v1` y `v2` con el entorno de `requirements.txt` | Integrado en `develop` (PR #14) |
 | `feature/predict-script` | `predict.py` + CSV de ejemplo | Integrado en `develop` (PR #15) |
 | `feature/pruebas-pytest` | Las 5 pruebas mínimas con pytest | Integrado en `develop` (PR #16) |
 | `feature/docker` | `Dockerfile`, `.dockerignore` y evidencia de `build`/`run` | Integrado en `develop` (PR #17) |
-| `feature/correcciones-fase1` | Formato de `fase-1/requirements.txt` y README raíz | **Este PR** |
+| `feature/correcciones-fase1` | Formato de `fase-1/requirements.txt` y README raíz | Integrado en `develop` (PR #18) |
+| `feature/readme-final` | README final de `fase-2`; luego integración de `develop` en `main` y etiqueta `entrega-2` | **Este PR** |
 
-Las secciones de predicción, Docker y pruebas de este README se completan en sus PR correspondientes (ver sección 10).
-
-## 2. Qué se hizo en este PR
+## 2. Estructura de `fase-2`
 
 ```
 fase-2/
 ├── train.py              # Punto de entrada: entrena y guarda una versión del modelo
-├── requirements.txt      # Dependencias con versiones explícitas
-├── src/                  # Lógica reutilizable (también la usará predict.py)
+├── predict.py            # Punto de entrada: predice con una versión guardada
+├── requirements.txt      # Dependencias con versiones explícitas (incluye pytest)
+├── Dockerfile            # Imagen para ejecutar train.py, predict.py y pytest
+├── .dockerignore         # Excluye entornos, cachés, .git, credenciales, datos y modelos de la imagen
+├── README.md
+├── src/                  # Lógica reutilizable compartida por train.py y predict.py
 │   ├── config.py         # Esquema del problema: columnas, etiquetas, nombres de archivos
 │   ├── data.py           # Lectura del CSV, validación de columnas y de tipos
 │   ├── preprocessing.py  # Construcción del Pipeline (preprocesamiento + modelo) y del modelo base
 │   ├── training.py       # Partición, validación cruzada, entrenamiento y métricas
 │   ├── persistence.py    # Versionamiento, metadatos, guardado y carga del artefacto
+│   ├── prediction.py     # Predicción sobre datos nuevos con el Pipeline guardado
 │   └── errors.py         # Errores previsibles con mensajes claros
-├── models/               # Versiones guardadas: v1/, v2/ ...
-├── data/                 # Aquí va WA_Fn-UseC_-Telco-Customer-Churn.csv (no se sube a Git; ver sección 5)
-├── outputs/              # Resultados generados (ignorado por Git)
-└── tests/                # Pruebas (PR feature/docker-tests)
+├── tests/
+│   └── test_aplicacion.py  # Las 5 pruebas mínimas con pytest
+├── data/
+│   └── ejemplo_prediccion.csv  # CSV pequeño de ejemplo (sin la variable objetivo)
+│                               # El dataset completo va aquí, pero no se sube a Git (ver sección 5)
+├── models/               # Versiones guardadas: v1/, v2/ y v-docker/
+└── outputs/              # Resultados generados (ignorado por Git)
 ```
 
-**Por qué esta organización.** La especificación pide que `train.py` y `predict.py` sean solo puntos de entrada y que la lógica esté en funciones reutilizables, sin copiar las celdas del notebook. Cada módulo de `src/` tiene una sola responsabilidad (datos, preprocesamiento, entrenamiento, persistencia), importar un módulo **no** entrena ni lee archivos, y `train.py` solo interpreta argumentos, llama a esas funciones y muestra el resumen. Esto también permite reutilizar las mismas funciones en la API REST de la fase siguiente.
+**Por qué esta organización.** La especificación pide que `train.py` y `predict.py` sean solo puntos de entrada y que la lógica esté en funciones reutilizables, sin copiar las celdas del notebook. Cada módulo de `src/` tiene una sola responsabilidad (datos, preprocesamiento, entrenamiento, persistencia, predicción), importar un módulo **no** entrena ni lee archivos, y los scripts solo interpretan argumentos, llaman a esas funciones y muestran el resumen. Esto permite reutilizar las mismas funciones en la API REST de la fase siguiente.
 
 ## 3. Correcciones y cambios respecto a la Fase 1
 
@@ -63,16 +68,18 @@ La especificación exige documentar los cambios que afecten el preprocesamiento,
 
 ### Retroalimentación de la Fase 1
 
-Al momento de esta entrega el equipo **no había recibido retroalimentación formal** de la Fase 1. Por eso se corrigieron los pendientes que el propio equipo detectó al revisar el repositorio:
+Al momento de esta entrega el equipo **no había recibido retroalimentación formal** de la Fase 1. Por eso, además de las correcciones técnicas de la tabla anterior (fuga de información y filas eliminadas, que el equipo identificó al revisar su propio notebook), se corrigieron dos pendientes detectados al revisar el repositorio:
 
 | Pendiente detectado | Corrección |
 |---|---|
-| `fase-1/requirements.txt` con formato inválido (`Python: 3.13.15`, `scikit-learn: 1.6.1`), que `pip` no podía leer | Reescrito como `paquete==versión`, conservando las versiones ya registradas; las de numpy, matplotlib y seaborn no se habían registrado y no se inventaron |
+| `fase-1/requirements.txt` con formato inválido (`Python: 3.13.15`, `scikit-learn: 1.6.1`), que `pip` no podía leer | Reescrito como `paquete==versión`, conservando las versiones ya registradas; las de numpy, matplotlib y seaborn no se habían registrado y no se inventaron (el archivo de la Fase 1 queda parcial) |
 | Tabla del `README.md` raíz rota y sin la carpeta `fase-2/` | Tabla corregida y carpeta agregada |
+
+`fase-1/` solo cambió en ese archivo de dependencias; el notebook, el modelo y el código de la Fase 1 no se modificaron. Cuando se reciba la retroalimentación del docente, los comentarios adicionales se incorporarán y se documentarán en esta sección.
 
 ## 4. Entorno
 
-- **Python:** 3.12 (probado con 3.12.5; verificar con `python --version`; debe ser el mismo en local y en Docker). No usar Python 3.14: scikit-learn 1.6.1 no tiene paquetes para esa versión. Las versiones de las librerías están fijadas en `requirements.txt`.
+- **Python:** 3.12 (versión de referencia 3.12.5, la misma de la imagen Docker; también probado con 3.12.10). Verificar con `python --version`; debe ser el mismo en local y en Docker. No usar Python 3.14: scikit-learn 1.6.1 no tiene paquetes para esa versión. Las versiones de las librerías están fijadas en `requirements.txt`.
 - Terminal usada: **PowerShell** (Windows). En Bash cambia solo la activación del entorno virtual.
 
 Desde la raíz del repositorio:
@@ -142,7 +149,8 @@ models/
 │   ├── modelo.joblib   # Pipeline completo + esquema de columnas + significado de etiquetas
 │   ├── metrics.json    # Métricas del modelo, del modelo base y de la validación cruzada
 │   └── metadata.json   # Datos de la ejecución (ver abajo)
-└── v2/ ...
+├── v2/ ...
+└── v-docker/ ...       # Versión entrenada dentro del contenedor (ver sección 9)
 ```
 
 **`metadata.json`** incluye: versión y fecha de creación, tipo de problema, variable objetivo y algoritmo, parámetros del modelo y semilla, variables de entrada con sus tipos esperados, datos usados (fuente, archivo, `sha256` y cantidad de observaciones), estrategia de partición y tamaños, métrica principal, versiones de Python y scikit-learn, referencia a `requirements.txt` y el **hash del commit** de Git del código usado.
@@ -157,7 +165,7 @@ models/
 
 Los errores previsibles (archivo inexistente, columna faltante, objetivo con valores inválidos, texto en una columna numérica, versión repetida o con caracteres no válidos) imprimen `Error: <mensaje>` y terminan con código de salida distinto de cero, sin dejar una versión a medias.
 
-## Predicción: `predict.py`
+## 7. Predicción: `predict.py`
 
 `predict.py` carga una versión guardada del modelo y predice sobre un CSV nuevo. **No reentrena ni reajusta nada**: usa el Pipeline guardado (imputación, escalamiento y codificación aprendidos en el entrenamiento).
 
@@ -225,7 +233,7 @@ EJ-0007,0,No churn,0.1451
 EJ-0008,1,Churn,0.7939
 ```
 
-## Pruebas: pytest
+## 8. Pruebas: pytest
 
 Las pruebas están en `tests/test_aplicacion.py` y usan **datos sintéticos** de 300 clientes con el esquema real: no necesitan el CSV de Kaggle ni la red, y escriben solo en carpetas temporales. Se ejecutan desde `fase-2/`:
 
@@ -249,9 +257,9 @@ tests/test_aplicacion.py ..... [100%]
 5 passed
 ```
 
-Los `DeprecationWarning` de scipy que pueden aparecer con estas versiones no afectan los resultados. La imagen de Docker **no** se prueba con pytest: se verifica manualmente (ver la sección de Docker).
+Las pruebas también se ejecutaron con Python 3.12.10 en local y dentro del contenedor Docker (`5 passed` en ambos). Los `DeprecationWarning` de scipy que pueden aparecer con estas versiones no afectan los resultados. La construcción de la imagen y la ejecución de los scripts en Docker no se automatizan con pytest: se verifican manualmente (sección 9).
 
-## Docker
+## 9. Docker
 
 La imagen ejecuta `train.py`, `predict.py` y pytest. Contiene solo el código (`src/`, `tests/`, `train.py`, `predict.py`) y las dependencias fijadas de `requirements.txt` sobre `python:3.12.5-slim`. **No** contiene datos, modelos ni credenciales (ver `.dockerignore`), y **no entrena durante el build**: el entrenamiento ocurre al ejecutar el contenedor. Los datos y los modelos se montan con `-v`, así que lo que el contenedor guarda queda en la carpeta local.
 
@@ -289,14 +297,16 @@ docker run --rm modelos-fase2:1.0 python -m pytest -q
 | `docker build -t modelos-fase2:1.0 .` | Imagen creada, 679 MB |
 | `docker run --rm modelos-fase2:1.0` | Muestra la ayuda de `train.py` |
 | `... python predict.py --help` | Muestra la ayuda de `predict.py` |
-| Entrenar dentro del contenedor | Crea `models/v-docker/` en la carpeta local; su `metadata.json` registra Python 3.12.5, scikit-learn 1.6.1 y `commit: "no disponible (sin Git, p. ej. dentro de Docker)"` |
+| Contenido de la imagen | Solo `predict.py`, `requirements.txt`, `src`, `tests` y `train.py`; no existe `/app/data` |
+| Entrenar dentro del contenedor | Crea `models/v-docker/` en la carpeta local; ROC-AUC 0.8416, igual que `v1`; su `metadata.json` registra Python 3.12.5, scikit-learn 1.6.1 y `commit: "no disponible (sin Git, p. ej. dentro de Docker)"` |
 | Predecir con `v1` | `Modelo versión v1: 8 predicciones (4 con churn, 4 sin churn).` y se genera `outputs/predicciones_docker.csv`, con las mismas probabilidades que fuera de Docker (p. ej. `EJ-0001` 0.8057, `EJ-0006` 0.0078) |
 | Modelo inexistente (`--version v99`) | `Error: No se encontró el modelo: models/v99`, código de salida `1` y sin archivo de salida |
+| Repetir una versión existente | Rechazada con código de salida `1`, sin sobrescribir |
 | `python -m pytest -q` en el contenedor | `5 passed` |
 
 Dentro del contenedor no hay Git, por eso el commit queda como "no disponible" en los metadatos; el resto de la trazabilidad (versiones de Python y scikit-learn, huella SHA256 de los datos) se conserva. El contenedor se ejecuta con `--rm`, de modo que no queda ningún contenedor de esta imagen y todo lo que persiste está en `models/` y `outputs/`.
 
-## 7. Evidencia de ejecución
+## 10. Evidencia de ejecución del entrenamiento
 
 Salida real de la ejecución en PowerShell (Windows):
 
@@ -321,9 +331,9 @@ Archivos generados:
   metadata : models\v1\metadata.json
 ```
 
-Los mismos comandos con la misma semilla dan **resultados idénticos en Windows**, lo que confirma la reproducibilidad.
+Los mismos comandos con la misma semilla dan **resultados idénticos** al ejecutar en Windows y dentro del contenedor Docker (Linux), lo que confirma la reproducibilidad.
 
-## 8. Resultados
+## 11. Resultados
 
 Métrica principal: **ROC-AUC** sobre el conjunto de prueba (1.409 clientes). Se reportan también recall, precision, F1 y accuracy.
 
@@ -349,23 +359,42 @@ Métrica principal: **ROC-AUC** sobre el conjunto de prueba (1.409 clientes). Se
 - `TotalCharges` vacío corresponde a clientes con `tenure = 0`; imputarlo con la mediana es una simplificación (su valor lógico sería 0).
 - El `commit` en `metadata.json` solo se registra si Git está disponible; dentro de Docker queda como "no disponible".
 
-## 9. Cómo se revisó este PR
+## 12. Verificación de la entrega
 
-1. La estructura coincide con la sección 13 de la especificación.
-2. `train.py` funciona sin ejecutar el notebook y permite consultar `--help`.
-3. La partición ocurre antes de ajustar transformaciones, y el Pipeline se guarda completo.
-4. Se guardan métricas del modelo y del modelo base, y metadatos de cada versión.
-5. Existen dos versiones (`v1`, `v2`) y repetir un identificador no sobrescribe.
-6. Los resultados se reprodujeron con los mismos números en otra máquina y otro sistema operativo.
+Lista de verificación de la especificación (sección 17):
 
-## 10. Pendiente en los siguientes PR
+- [x] La carpeta `fase-1` se conserva (solo se corrigió el formato de su `requirements.txt`) y la carpeta `fase-2` está organizada.
+- [x] Las correcciones están documentadas (sección 3); la retroalimentación formal del docente aún no estaba disponible.
+- [x] `train.py` funciona sin ejecutar el notebook.
+- [x] `predict.py` carga una versión sin entrenar ni reajustar transformaciones.
+- [x] Ambos scripts reciben argumentos y permiten consultar `--help`.
+- [x] El preprocesamiento se guarda y reutiliza con el modelo.
+- [x] La separación de datos y las transformaciones evitan fuga de información.
+- [x] Se guardan las métricas del modelo y del modelo base.
+- [x] Existen dos versiones identificables con sus metadatos (`v1`, `v2`), más `v-docker`.
+- [x] Crear una versión nueva no elimina ni sobrescribe la anterior.
+- [x] La predicción conserva la correspondencia con las filas de entrada.
+- [x] Se validan columnas, tipos de datos y errores previsibles.
+- [x] El archivo de ejemplo permite predecir sin la variable objetivo.
+- [x] `requirements.txt` permite preparar el entorno documentado.
+- [x] La imagen Docker se construye correctamente.
+- [x] El entrenamiento y la predicción funcionan dentro del contenedor.
+- [x] Los modelos y resultados persisten fuera del contenedor.
+- [x] Las cinco pruebas mínimas con pytest se ejecutan y pasan.
+- [x] El README contiene comandos reales y evidencia de ejecución.
+- [x] Todos los integrantes contribuyeron y sus Pull Requests fueron revisados.
+- [ ] La Entrega 2 está integrada en `main` e identificada por commit o etiqueta.
 
-- **`feature/predict-script`:** `predict.py`, CSV de ejemplo `data/ejemplo_prediccion.csv`, esquema del CSV de predicción, validación de columnas y tipos, y significado de la salida.
-- **`feature/docker-tests`:** `Dockerfile`, `.dockerignore`, comandos de construcción y ejecución con montajes, y las cinco pruebas mínimas con pytest (`python -m pytest` desde `fase-2/`).
-- **Cierre:** integrar `develop` en `main` y etiquetar la entrega (`entrega-2`); el commit o etiqueta se registrará aquí.
+## 13. Versión entregada
 
-## 11. Fuentes
+- **Etiqueta de Git:** `entrega-2`
+- **Commit:** `COMPLETAR_CON_EL_HASH`
+
+Este identificador corresponde al código del repositorio y es distinto de las versiones de modelos de `models/`.
+
+## 14. Fuentes
 
 - Dataset: *Telco Customer Churn* (IBM sample data), Kaggle — https://www.kaggle.com/datasets/blastchar/telco-customer-churn
 - Documentación de scikit-learn: `Pipeline`, `ColumnTransformer`, `SimpleImputer`, `OneHotEncoder`, `LogisticRegression`, `StratifiedKFold`.
+- Documentación de Docker Desktop y de la imagen oficial `python` en Docker Hub.
 - Especificación técnica de la Fase 2 (docente Andrés Parra) y notebook de la Fase 1 del equipo.
