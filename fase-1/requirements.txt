@@ -1,7 +1,7 @@
-Python: 3.13.15
-scikit-learn: 1.6.1
-pandas: 2.2.3
-joblib: 1.6.0
-
-
-
+# Fase 1 - versiones registradas en el entrenamiento (Google Colab).
+# Versión de Python registrada: 3.13.15
+scikit-learn==1.6.1
+pandas==2.2.3
+joblib==1.6.0
+# El notebook también usa numpy, matplotlib y seaborn (gráficos y cálculo);
+# sus versiones no se registraron en la Fase 1.
