@@ -1,0 +1,1 @@
+"""Lógica compartida entre train.py y predict.py (Fase 2)."""
