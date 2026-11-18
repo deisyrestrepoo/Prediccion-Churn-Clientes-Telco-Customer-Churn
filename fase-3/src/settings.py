@@ -27,10 +27,17 @@ DATA_PATH_DEFAULT = "data/WA_Fn-UseC_-Telco-Customer-Churn.csv"
 
 @dataclass(frozen=True)
 class Config:
+    """Configuración de lectura: la usan /health y /predict."""
     version: str
     models_dir: Path
     data_path: Path
     target: str
+
+
+@dataclass(frozen=True)
+class ConfigEntrenamiento:
+    """Parámetros de /train. Se leen aparte para que una variable inválida (p. ej. SEED)
+    no afecte a /health ni a /predict."""
     seed: int
     test_size: float
     cv_folds: int
@@ -52,6 +59,11 @@ def obtener_config() -> Config:
         models_dir=Path(os.environ.get("MODELS_DIR", "models")),
         data_path=Path(os.environ.get("DATA_PATH", DATA_PATH_DEFAULT)),
         target=os.environ.get("TARGET", TARGET_DEFAULT),
+    )
+
+
+def obtener_config_entrenamiento() -> ConfigEntrenamiento:
+    return ConfigEntrenamiento(
         seed=_leer("SEED", "42", int),
         test_size=_leer("TEST_SIZE", "0.2", float),
         cv_folds=_leer("CV_FOLDS", "5", int),
