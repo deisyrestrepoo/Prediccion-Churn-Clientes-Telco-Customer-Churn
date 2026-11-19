@@ -1,19 +1,31 @@
 """Lógica de servicio de la API: cargar la versión configurada y predecir un registro."""
 from __future__ import annotations
 
+import re
+import threading
 from functools import lru_cache
 from pathlib import Path
 
 import pandas as pd
 
 from .config import ARTIFACT_NAME, CATEGORICAL_COLUMNS, FEATURE_COLUMNS, LABEL_NAMES
-from .data import preparar_features
-from .errors import DatosInvalidosError, ErrorAplicacion, ModeloNoEncontradoError
-from .persistence import cargar_modelo, ruta_version
+from .data import cargar_datos_etiquetados, preparar_features
+from .errors import (
+    DatosInvalidosError,
+    ErrorAplicacion,
+    ModeloNoEncontradoError,
+    VersionExistenteError,
+)
+from .persistence import cargar_modelo, guardar_version, ruta_version
+from .training import METRICA_PRINCIPAL, entrenar_y_evaluar
 
 
 class ModeloNoDisponibleError(ErrorAplicacion):
     """La versión configurada no existe, no se puede cargar o no es compatible (HTTP 503)."""
+
+
+class EntrenamientoEnCursoError(ErrorAplicacion):
+    """Ya hay un entrenamiento en ejecución (HTTP 409)."""
 
 
 def versiones_disponibles(models_dir) -> list[str]:
@@ -83,4 +95,60 @@ def predecir_registro(paquete: dict, registro: dict) -> dict:
         "probabilidad_churn": round(probabilidad, 4),
         "version": paquete["version"],
         "avisos": avisos,
+    }
+
+
+# ------------------------------------------------------------------ entrenamiento
+_BLOQUEO_ENTRENAMIENTO = threading.Lock()
+_VERSION_NUMERICA = re.compile(r"^v(\d+)$")
+_METRICAS_RESUMEN = ("roc_auc", "recall", "precision", "f1", "accuracy")
+
+
+def siguiente_version(models_dir) -> str:
+    """Primer identificador vN libre: v(mayor número existente + 1). Ignora v-docker, etc."""
+    base = Path(models_dir)
+    numeros = []
+    if base.is_dir():
+        for carpeta in base.iterdir():
+            coincide = _VERSION_NUMERICA.match(carpeta.name)
+            if coincide:
+                numeros.append(int(coincide.group(1)))
+    return f"v{max(numeros, default=0) + 1}"
+
+
+def entrenar_nueva_version(models_dir, data_path, target: str, seed: int,
+                           test_size: float, cv_folds: int) -> dict:
+    """Entrena con la misma lógica de la Fase 2 y guarda una versión NUEVA (nunca sobrescribe).
+
+    Solo se permite un entrenamiento a la vez (si hay otro en curso, EntrenamientoEnCursoError).
+    """
+    if not _BLOQUEO_ENTRENAMIENTO.acquire(blocking=False):
+        raise EntrenamientoEnCursoError(
+            "Ya hay un entrenamiento en curso. Espere a que termine y vuelva a intentarlo.")
+    try:
+        X, y = cargar_datos_etiquetados(data_path, target)
+        resultado = entrenar_y_evaluar(X, y, seed, test_size, cv_folds)
+        for _ in range(5):  # por si otro proceso reserva el mismo identificador
+            version = siguiente_version(models_dir)
+            try:
+                rutas = guardar_version(models_dir, version, target, seed, data_path, len(X), resultado)
+                break
+            except VersionExistenteError:
+                continue
+        else:
+            raise ErrorAplicacion("No se pudo reservar un identificador de versión disponible.")
+    finally:
+        _BLOQUEO_ENTRENAMIENTO.release()
+
+    particion = resultado["particion"]
+    return {
+        "version": version,
+        "metrica_principal": METRICA_PRINCIPAL,
+        "seed": seed,
+        "observaciones": len(X),
+        "filas_entrenamiento": particion["filas_entrenamiento"],
+        "filas_prueba": particion["filas_prueba"],
+        "metricas": {m: round(resultado["metricas_modelo"][m], 4) for m in _METRICAS_RESUMEN},
+        "metricas_modelo_base": {m: round(resultado["metricas_base"][m], 4) for m in _METRICAS_RESUMEN},
+        "archivos": {nombre: Path(ruta).as_posix() for nombre, ruta in rutas.items()},
     }
