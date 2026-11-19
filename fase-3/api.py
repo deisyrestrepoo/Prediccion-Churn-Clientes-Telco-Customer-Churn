@@ -8,20 +8,28 @@ La versión del modelo se elige con la variable MODEL_VERSION (ver src/settings.
 """
 from __future__ import annotations
 
+from typing import Optional
+
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from src.errors import DatosInvalidosError, ErrorAplicacion
-from src.schemas import ClienteEntrada, PrediccionSalida
-from src.servicio import ModeloNoDisponibleError, cargar_modelo_configurado, predecir_registro
-from src.settings import modelo_disponible, obtener_config
+from src.schemas import ClienteEntrada, EntrenamientoEntrada, EntrenamientoSalida, PrediccionSalida
+from src.servicio import (
+    EntrenamientoEnCursoError,
+    ModeloNoDisponibleError,
+    cargar_modelo_configurado,
+    entrenar_nueva_version,
+    predecir_registro,
+)
+from src.settings import modelo_disponible, obtener_config, obtener_config_entrenamiento
 
 app = FastAPI(
     title="API de predicción de churn",
     description="Consulta un modelo guardado y entrena nuevas versiones mediante HTTP "
                 "(Proyecto Integrador, Modelos y Simulación de Sistemas I).",
-    version="0.2.0",
+    version="0.3.0",
 )
 
 
@@ -79,7 +87,7 @@ async def manejar_error_aplicacion(request: Request, exc: ErrorAplicacion) -> JS
     return respuesta_error(500, "Error de configuración o de la aplicación", str(exc))
 
 
-#  rutas
+# ------------------------------------------------------------------------------ rutas
 @app.get("/health", summary="Estado del servicio")
 def health() -> dict:
     """Indica que la API está en ejecución y qué versión del modelo tiene configurada.
@@ -120,3 +128,43 @@ def predict(cliente: ClienteEntrada):
         return predecir_registro(paquete, cliente.model_dump())
     except DatosInvalidosError as exc:  # defensa: la validación ya cubre estos casos
         return respuesta_error(422, "Entrada inválida", str(exc))
+
+
+@app.post(
+    "/train",
+    status_code=201,
+    response_model=EntrenamientoSalida,
+    summary="Entrena y guarda una versión nueva del modelo",
+    responses={
+        409: {"description": "Ya hay un entrenamiento en curso."},
+        503: {"description": "Los datos de entrenamiento no están disponibles o no son válidos."},
+    },
+)
+def train(entrada: Optional[EntrenamientoEntrada] = None):
+    """Entrena con los datos y la configuración de la Fase 2 y guarda una versión NUEVA con su
+    modelo, métricas y metadatos. Las versiones anteriores no se modifican.
+
+    El cuerpo puede ir vacío. Tarda alrededor de un minuto (incluye validación cruzada).
+    La nueva versión no se activa sola: `/predict` sigue usando `MODEL_VERSION` hasta que se
+    cambie esa variable y se reinicie la API.
+    """
+    cfg = obtener_config()
+    entrenamiento = obtener_config_entrenamiento()
+    seed = entrada.seed if entrada is not None and entrada.seed is not None else entrenamiento.seed
+    try:
+        resultado = entrenar_nueva_version(cfg.models_dir, cfg.data_path, cfg.target, seed,
+                                           entrenamiento.test_size, entrenamiento.cv_folds)
+    except EntrenamientoEnCursoError as exc:
+        return respuesta_error(409, "Entrenamiento en curso", str(exc))
+    except DatosInvalidosError as exc:
+        if not cfg.data_path.is_file():
+            return respuesta_error(
+                503, "Datos de entrenamiento no disponibles",
+                f"{exc} Coloque el CSV en '{cfg.data_path.as_posix()}' (o monte la carpeta de datos en Docker) "
+                "o configure la variable de entorno DATA_PATH.")
+        return respuesta_error(500, "No se pudo entrenar", str(exc))
+    resultado["version_activa"] = cfg.version
+    resultado["mensaje"] = (
+        f"Versión {resultado['version']} guardada; las anteriores se conservan. /predict sigue usando "
+        f"'{cfg.version}'. Para activar la nueva, configure MODEL_VERSION={resultado['version']} y reinicie la API.")
+    return resultado
