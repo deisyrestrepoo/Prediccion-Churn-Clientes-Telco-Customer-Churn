@@ -64,3 +64,26 @@ class PrediccionSalida(BaseModel):
     version: str = Field(description="Versión del modelo que produjo la predicción.")
     avisos: list[str] = Field(default_factory=list,
                               description="Avisos no bloqueantes, p. ej. categorías no vistas en el entrenamiento.")
+
+
+class EntrenamientoEntrada(BaseModel):
+    """Cuerpo opcional de /train. Puede enviarse vacío: se usa la configuración de la Fase 2."""
+    model_config = ConfigDict(extra="ignore", json_schema_extra={"example": {"seed": 42}})
+
+    seed: Optional[StrictInt] = Field(
+        default=None, ge=0,
+        description="Semilla de la partición. Si se omite se usa SEED (por defecto 42).")
+
+
+class EntrenamientoSalida(BaseModel):
+    version: str = Field(description="Identificador de la versión recién guardada (p. ej. 'v3').")
+    metrica_principal: str = Field(description="Métrica principal de comparación entre versiones.")
+    seed: int
+    observaciones: int = Field(description="Filas del CSV usadas en total.")
+    filas_entrenamiento: int
+    filas_prueba: int
+    metricas: dict[str, float] = Field(description="Métricas del modelo sobre el conjunto de prueba.")
+    metricas_modelo_base: dict[str, float] = Field(description="Métricas del modelo base con la misma partición.")
+    archivos: dict[str, str] = Field(description="Artefactos guardados (modelo, métricas y metadatos).")
+    version_activa: str = Field(description="Versión que sigue usando /predict (MODEL_VERSION).")
+    mensaje: str
