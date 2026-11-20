@@ -14,23 +14,30 @@ La Fase 3 expone por HTTP el modelo de la Fase 2 (clasificación de churn de cli
 |---|---|---|
 | `feature/api-base` | Esqueleto de `fase-3/`, configuración y `GET /health` | Integrado en `develop` |
 | `feature/api-predict` | `POST /predict` con validación de entradas y errores 422 y 503 | Integrado en `develop` |
-| `feature/api-train` | `POST /train` con versión nueva automática | **Este PR** |
-| `feature/api-docker-tests` | Dockerfile, pruebas con pytest, cliente de prueba y documentación completa | Pendiente |
+| `feature/api-train` | `POST /train` con versión nueva automática | Integrado en `develop` |
+| `feature/api-docker-tests` | Dockerfile, pruebas con pytest, cliente de prueba y documentación completa | **Este PR** |
 
 ## 2. Estructura
 
 ```
 fase-3/
 ├── api.py             # Aplicación FastAPI (rutas y manejo de errores)
-├── requirements.txt   # Dependencias con versiones explícitas
+├── requirements.txt   # Dependencias con versiones explícitas (incluye pytest)
+├── Dockerfile         # Imagen de la API (uvicorn en 0.0.0.0:8000)
+├── .dockerignore      # Excluye entornos, cachés, credenciales, datos y modelos de la imagen
+├── pytest.ini         # Configuración de pytest
+├── cliente_prueba.py  # Cliente de prueba: envía una fila del CSV de ejemplo a /predict
 ├── src/
 │   ├── config.py, data.py, errors.py, persistence.py,
 │   │   preprocessing.py, training.py   # Copia sin cambios de fase-2/src/
 │   ├── settings.py    # Configuración por variables de entorno
-│   ├── schemas.py     # Entrada (19 variables) y salida de /predict
-│   └── servicio.py    # Carga de la versión configurada y predicción de un registro
+│   ├── schemas.py     # Entradas y salidas de /predict y /train
+│   └── servicio.py    # Carga de la versión, predicción y entrenamiento de versiones nuevas
+├── tests/
+│   └── test_api.py    # Pruebas con pytest (8 pruebas)
 ├── models/            # Versiones guardadas: v1/ y v2/ (copiadas de fase-2/models/)
-├── ejemplos/          # JSON de ejemplo para probar /predict
+├── ejemplos/          # JSON y CSV de ejemplo para probar la API
+├── data/              # CSV completo del dataset (no se sube a Git; ver sección 3)
 └── README.md
 ```
 
@@ -210,7 +217,140 @@ curl.exe -X POST http://127.0.0.1:8000/predict -H "Content-Type: application/jso
 {"error": "Entrada inválida", "mensaje": "Contract: campo obligatorio ausente", "detalles": [{"campo": "Contract", "problema": "campo obligatorio ausente"}]}
 ```
 
-## 6. Pendiente en los siguientes PR
+## 6. Docker
 
-- Dockerfile actualizado, pruebas con pytest y cliente de prueba.
-- Comandos de Docker con montajes de datos y modelos.
+La imagen contiene solo el código de la API (`api.py`, `src/`, `tests/`) y las dependencias fijadas de `requirements.txt`, sobre `python:3.12.5-slim`. **No** contiene datos, modelos ni credenciales (ver `.dockerignore`) y **no entrena durante el build**: `/train` entrena dentro del contenedor cuando se le pide. Los modelos y los datos se montan desde el equipo anfitrión, así que las versiones que cree `/train` persisten aunque se elimine el contenedor.
+
+Los comandos se ejecutan en **PowerShell**, desde `fase-3/` (con Docker Desktop abierto):
+
+**Construir la imagen**
+
+```powershell
+docker build -t churn-api:1.0 .
+```
+
+**Iniciar la API**
+
+```powershell
+docker run --rm -d --name churn-api -p 8000:8000 -v "${PWD}/models:/app/models" -v "${PWD}/data:/app/data:ro" churn-api:1.0
+```
+
+| Opción | Para qué sirve |
+|---|---|
+| `-p 8000:8000` | Publica el puerto 8000 de la API (si está ocupado, usar por ejemplo `-p 8001:8000`) |
+| `-v "${PWD}/models:/app/models"` | Monta las versiones del modelo. Es de escritura: `/train` guarda aquí las versiones nuevas |
+| `-v "${PWD}/data:/app/data:ro"` | Monta el CSV de entrenamiento en solo lectura (solo lo usa `/train`) |
+| `-e MODEL_VERSION=v2` | (Opcional) Usa otra versión del modelo; por defecto `v1` |
+
+**Comprobar que funciona**
+
+```powershell
+docker ps                                       # STATUS pasa a "healthy" en unos segundos
+Invoke-RestMethod http://127.0.0.1:8000/health
+python cliente_prueba.py                        # envía un cliente del CSV de ejemplo a /predict
+docker logs churn-api                           # solicitudes recibidas
+```
+
+Nota: en Windows PowerShell 5, `Invoke-RestMethod` puede mostrar mal los acentos y no imprime el JSON completo; para ver la respuesta tal cual se usa `cliente_prueba.py` o `curl.exe`. Al iniciar el contenedor, la API tarda unos segundos en estar lista: conviene esperar a que `docker logs churn-api` muestre `Application startup complete` antes de consultar.
+
+**Entrenar una versión nueva dentro del contenedor** (necesita el CSV en `data/`):
+
+```powershell
+Invoke-RestMethod -Method Post http://127.0.0.1:8000/train
+dir models                                      # aparece la versión nueva (v3) en la carpeta local
+```
+
+**Detener**
+
+```powershell
+docker stop churn-api
+```
+
+**Pruebas dentro del contenedor**
+
+```powershell
+docker run --rm churn-api:1.0 python -m pytest -q
+```
+
+## 7. Pruebas con pytest
+
+Las pruebas usan un modelo pequeño entrenado al vuelo con datos sintéticos que tienen el esquema real: no necesitan el CSV de Kaggle, ni la red, ni las versiones de `models/`, y escriben solo en carpetas temporales. Desde `fase-3/`, con el entorno virtual activo:
+
+```powershell
+python -m pytest -v
+```
+
+| Prueba | Qué verifica |
+|---|---|
+| `test_health_responde_200` | **(mínima 1)** `/health` responde 200 e informa el estado y la versión configurada |
+| `test_entrada_valida_devuelve_prediccion_y_version` | **(mínima 2)** Una entrada válida devuelve predicción y versión, y la probabilidad coincide con la del artefacto guardado |
+| `test_entrada_sin_campo_obligatorio_se_rechaza` | **(mínima 3)** Sin una variable obligatoria: 422 y el mensaje nombra el campo |
+| `test_tipo_incompatible_se_rechaza_nombrando_el_campo` | Un tipo incompatible (`tenure` como texto) da 422 con el nombre del campo |
+| `test_valor_nulo_permitido_usa_la_regla_guardada` | Una cuenta sin primera factura (`TotalCharges` `null`) se predice con la regla de la Fase 2 |
+| `test_categoria_no_vista_se_predice_con_aviso` | Una categoría no vista da 200 con un aviso |
+| `test_modelo_no_disponible_devuelve_503_y_lista_versiones` | Versión inexistente: 503 con las versiones disponibles; `/health` sigue en 200 |
+| `test_train_guarda_versiones_nuevas_sin_tocar_las_anteriores` | `/train` crea `v1` y luego `v2`, y el modelo anterior queda idéntico (misma huella SHA-256) |
+
+Los `DeprecationWarning` de scipy que pueden aparecer con estas versiones no afectan los resultados.
+
+## 8. Cliente de prueba
+
+`cliente_prueba.py` (solo biblioteca estándar) toma una fila de `ejemplos/ejemplo_prediccion.csv` (el CSV de ejemplo de la Fase 2), la convierte en JSON —números como números, categorías como texto y celdas vacías como `null`— y la envía a `POST /predict`. Con la API en marcha, desde `fase-3/`:
+
+```powershell
+python cliente_prueba.py                          # fila 0 (cliente EJ-0001)
+python cliente_prueba.py --fila 6                 # EJ-0007: tenure 0 y TotalCharges vacío -> null
+python cliente_prueba.py --quitar Contract        # quita un campo: debe responder 422
+python cliente_prueba.py --url http://127.0.0.1:8001
+```
+
+Termina con código 0 si la API respondió lo esperado (200, o 422 con `--quitar`) y con 1 en otro caso, incluso si no puede conectarse. Salida con la fila 0:
+
+```
+GET /health -> HTTP 200: {"estado": "ok", "mensaje": "API en ejecución", "version_configurada": "v1", "modelo_disponible": true}
+
+POST /predict con el cliente EJ-0001:
+{ "gender": "Female", "SeniorCitizen": 0, ..., "MonthlyCharges": 29.85, "TotalCharges": 29.85 }
+
+-> HTTP 200:
+{ "prediccion": "Churn", "clase": 1, "probabilidad_churn": 0.8057, "version": "v1", "avisos": [] }
+```
+
+El mismo cliente en `curl` (equivale al ejemplo de la sección 5):
+
+```powershell
+curl.exe -X POST http://127.0.0.1:8000/predict -H "Content-Type: application/json" -d "@ejemplos/cliente_valido.json"
+```
+
+## 9. Evidencia de ejecución
+
+Ejecutada en Windows (PowerShell, Docker Desktop 4.97.0, Python 3.12.10) el 19 de noviembre de 2026, desde `fase-3/`.
+
+| Verificación | Resultado |
+|---|---|
+| `python -m pytest -v` en el equipo local | `8 passed` en 17.05 s |
+| `docker build -t churn-api:1.0 .` | Imagen creada. El primer build tardó 1266 s por la descarga de las dependencias; los siguientes reutilizan la caché |
+| `docker run --rm churn-api:1.0 ls -a /app` | Solo `api.py`, `pytest.ini`, `requirements.txt`, `src` y `tests`: la imagen no contiene datos, modelos ni credenciales |
+| Iniciar el contenedor (`docker run --rm -d --name churn-api -p 8000:8000 -v ...`) | `docker ps` muestra `Up About a minute (healthy)`; los registros muestran `Application startup complete` y `Uvicorn running on http://0.0.0.0:8000` |
+| `GET /health` desde el equipo anfitrión | HTTP 200: `{"estado": "ok", "mensaje": "API en ejecución", "version_configurada": "v1", "modelo_disponible": true}` |
+| `python cliente_prueba.py` | HTTP 200: `{"prediccion": "Churn", "clase": 1, "probabilidad_churn": 0.8057, "version": "v1", "avisos": []}` |
+| `POST /train` dentro del contenedor | Respuesta: `Versión v3 guardada; las anteriores se conservan. /predict sigue usando 'v1'...` |
+| Persistencia | Con el contenedor ya eliminado (`docker ps -a` sin filas), `models/v3/` existe en la carpeta local con `modelo.joblib`, `metrics.json` y `metadata.json`; su ROC-AUC es 0.8416, igual que `v1`; `v1` y `v2` siguen en su lugar |
+| `docker run --rm churn-api:1.0 python -m pytest -q` | `8 passed` en 3.56 s |
+
+Solicitud y respuesta reales del cliente de prueba (cliente `EJ-0001` del CSV de ejemplo):
+
+```json
+{"gender": "Female", "SeniorCitizen": 0, "Partner": "Yes", "Dependents": "No", "tenure": 1,
+ "PhoneService": "No", "MultipleLines": "No phone service", "InternetService": "DSL",
+ "OnlineSecurity": "No", "OnlineBackup": "Yes", "DeviceProtection": "No", "TechSupport": "No",
+ "StreamingTV": "No", "StreamingMovies": "No", "Contract": "Month-to-month",
+ "PaperlessBilling": "Yes", "PaymentMethod": "Electronic check",
+ "MonthlyCharges": 29.85, "TotalCharges": 29.85}
+```
+
+```json
+{"prediccion": "Churn", "clase": 1, "probabilidad_churn": 0.8057, "version": "v1", "avisos": []}
+```
+
+La versión `v3` creada para esta prueba se eliminó después para no incluirla en el repositorio; las versiones de la entrega siguen siendo `v1` y `v2`.
