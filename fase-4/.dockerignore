@@ -1,0 +1,29 @@
+# Entornos virtuales y cachés
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Control de versiones y archivos de Docker
+.git/
+.gitignore
+.dockerignore
+Dockerfile
+
+# Credenciales: nunca deben entrar en la imagen
+.env
+.env.*
+kaggle.json
+*.pem
+*.key
+
+# Datos, modelos y registro: se montan como volúmenes al ejecutar
+data/
+models/
+logs/
+
+# Material que solo se usa desde el equipo anfitrión
+ejemplos/
+cliente_prueba.py
+README.md
