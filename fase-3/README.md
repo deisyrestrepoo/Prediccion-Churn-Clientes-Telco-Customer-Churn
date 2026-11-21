@@ -6,7 +6,20 @@
 
 ## 1. Relación con la Fase 2
 
-La Fase 3 expone por HTTP el modelo de la Fase 2 (clasificación de churn de clientes Telco): consultar una predicción, comprobar que el servicio está activo y entrenar una nueva versión. Se reutilizan la lógica de `fase-2/src/`, el esquema de entradas y el preprocesamiento guardado con cada versión. `fase-1/` y `fase-2/` se conservan sin cambios.
+La Fase 3 expone por HTTP el modelo de la Fase 2 (clasificación de churn de clientes Telco): consultar una predicción, comprobar que el servicio está activo y entrenar una nueva versión. Se reutilizan la lógica de `fase-2/src/`, el esquema de entradas y el preprocesamiento guardado con cada versión. En esta fase `fase-1/` y `fase-2/` no se modificaron.
+
+### Inicio rápido (Docker)
+
+Desde `fase-3/`, en PowerShell, con Docker Desktop abierto (el CSV del dataset en `data/` solo hace falta para `/train`):
+
+```powershell
+docker build -t churn-api:1.0 .
+docker run --rm -d --name churn-api -p 8000:8000 -v "${PWD}/models:/app/models" -v "${PWD}/data:/app/data:ro" churn-api:1.0
+python cliente_prueba.py        # esperar antes a que `docker logs churn-api` muestre «Application startup complete»
+docker stop churn-api
+```
+
+El detalle de cada paso, la ejecución sin Docker y las rutas de la API están en las secciones 4 a 6.
 
 ### Estado de la fase (por Pull Requests)
 
@@ -15,7 +28,8 @@ La Fase 3 expone por HTTP el modelo de la Fase 2 (clasificación de churn de cli
 | `feature/api-base` | Esqueleto de `fase-3/`, configuración y `GET /health` | Integrado en `develop` |
 | `feature/api-predict` | `POST /predict` con validación de entradas y errores 422 y 503 | Integrado en `develop` |
 | `feature/api-train` | `POST /train` con versión nueva automática | Integrado en `develop` |
-| `feature/api-docker-tests` | Dockerfile, pruebas con pytest, cliente de prueba y documentación completa | **Este PR** |
+| `feature/api-docker-tests` | Dockerfile, pruebas con pytest, cliente de prueba y evidencia de ejecución | Integrado en `develop` |
+| `feature/docs-fase3` | Revisión final de este README y del README de la raíz | **Este PR** |
 
 ## 2. Estructura
 
@@ -354,3 +368,13 @@ Solicitud y respuesta reales del cliente de prueba (cliente `EJ-0001` del CSV de
 ```
 
 La versión `v3` creada para esta prueba se eliminó después para no incluirla en el repositorio; las versiones de la entrega siguen siendo `v1` y `v2`.
+
+## 10. Limitaciones conocidas y siguiente fase
+
+- **`/train` es síncrono:** la solicitud queda abierta hasta que termina el entrenamiento (de unos segundos a un par de minutos, según el equipo) y solo se permite uno a la vez (una segunda solicitud responde 409).
+- **La versión nueva no se activa sola:** `/predict` usa la versión de `MODEL_VERSION` hasta que se cambie esa variable y se reinicie la API. Así una versión recién entrenada no sustituye a la actual sin una decisión explícita.
+- **Entradas estrictas:** las 19 claves son obligatorias y los números deben enviarse como números. Es intencional, para que un error de quien envía los datos se detecte con un mensaje claro.
+- **Regla de nulos heredada de la Fase 2:** un `TotalCharges` `null` (cuenta sin primera factura) se imputa con la mediana del entrenamiento. Es una simplificación documentada en las limitaciones de la Fase 2.
+- **Umbral de decisión 0.5**, el mismo de las fases anteriores; no se optimizó. La precisión del modelo (~0.50) y su recall (~0.78) son los de la Fase 2.
+- **Sin autenticación ni registro de uso:** la API está pensada para demostración local. Registrar cada solicitud a `/predict` y calcular métricas de operación es el alcance de la Fase 4 (`fase-4/`), que parte de esta API.
+- **Primer build de Docker lento:** depende de la conexión (la primera vez descarga las librerías); los siguientes builds reutilizan la caché.
