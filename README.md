@@ -24,8 +24,8 @@ Cada carpeta tiene su propio `README.md` con los comandos completos, la evidenci
 ## Requisitos
 
 - **Python 3.12** (referencia 3.12.5; no usar 3.14, porque scikit-learn 1.6.1 no tiene paquetes para esa versión). Las dependencias de cada fase están fijadas en su `requirements.txt`.
-- **Docker Desktop**, para construir y ejecutar las imágenes de las fases 2 y 3.
-- **Dataset:** el CSV completo no está en el repositorio. Se descarga de [Kaggle](https://www.kaggle.com/datasets/blastchar/telco-customer-churn) y se deja en `fase-2/data/` y `fase-3/data/` con el nombre `WA_Fn-UseC_-Telco-Customer-Churn.csv` (esas carpetas están en el `.gitignore`).
+- **Docker Desktop**, para construir y ejecutar las imágenes de las fases 2, 3 y 4.
+- **Dataset:** el CSV completo no está en el repositorio. Se descarga de [Kaggle](https://www.kaggle.com/datasets/blastchar/telco-customer-churn) y se deja en `fase-2/data/` y `fase-3/data/` (y en `fase-4/data/`, solo si se usa `/train`) con el nombre `WA_Fn-UseC_-Telco-Customer-Churn.csv` (esas carpetas están en el `.gitignore`).
 
 ## Inicio rápido: la API con Docker
 
@@ -39,6 +39,10 @@ docker stop churn-api
 ```
 
 La documentación interactiva de la API queda en http://127.0.0.1:8000/docs. Los pasos completos están en [`fase-3/README.md`](fase-3/README.md).
+
+## Monitoreo (Fase 4)
+
+La API de `fase-4/` es la de la Fase 3 más un registro: cada llamada a `/predict` agrega una fila (fecha y hora, código HTTP, versión y predicción) a `logs/predicciones.csv`, y `monitoreo.py` calcula el total de solicitudes y el porcentaje de fallos. El reporte de la ejecución real (3 solicitudes y 33,3 %), la política de reentrenamiento y las versiones `v1` (activa) y `v2` están en [`fase-4/README.md`](fase-4/README.md), sección «Reporte».
 
 ## Flujo de trabajo (Git Flow simplificado)
 
