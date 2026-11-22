@@ -29,7 +29,7 @@ El detalle de cada paso, la ejecución sin Docker y las rutas de la API están e
 | `feature/api-predict` | `POST /predict` con validación de entradas y errores 422 y 503 | Integrado en `develop` |
 | `feature/api-train` | `POST /train` con versión nueva automática | Integrado en `develop` |
 | `feature/api-docker-tests` | Dockerfile, pruebas con pytest, cliente de prueba y evidencia de ejecución | Integrado en `develop` |
-| `feature/docs-fase3` | Revisión final de este README y del README de la raíz | **Este PR** |
+| `feature/docs-fase3` | Revisión final de este README y del README de la raíz | Integrado en `develop` |
 
 ## 2. Estructura
 
