@@ -14,7 +14,7 @@ La Fase 4 comprueba **cómo se usa la API** de la Fase 3 y **qué versión del m
 |---|---|---|
 | `feature/monitoreo-script` | Módulo de registro (`registro.py`), script `monitoreo.py` y sus pruebas | Integrado en `develop` (PR #22) |
 | `feature/monitoreo-api` | API con el registro habilitado (una fila por intento, incluidos los rechazos), Dockerfile y montaje del registro | Integrado en `develop` |
-| `feature/monitoreo-reporte` | Sección «Reporte», política de reentrenamiento, versiones identificadas y muestra del registro | **Este PR** |
+| `feature/monitoreo-reporte` | Sección «Reporte», política de reentrenamiento, versiones identificadas y muestra del registro | Integrado en `develop` |
 
 ## 2. Estructura
 
