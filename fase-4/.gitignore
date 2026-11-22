@@ -1,0 +1,6 @@
+# Registro real de la API: crece con el uso y no se versiona.
+# La muestra del registro que se entrega con el reporte va en un archivo aparte.
+logs/
+
+# CSV completo del dataset (se descarga de Kaggle, ver README)
+data/*
